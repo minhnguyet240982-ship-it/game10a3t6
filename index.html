@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>10A3 - BỨT PHÁ CÙNG ĐỒNG ĐỘI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Montserrat', 'sans-serif'],
+                    },
+                    colors: {
+                        team1: '#4ade80', // Mắt Nai - Xanh lá
+                        team2: '#3b82f6', // Đại Bàng - Xanh dương
+                        team3: '#f97316', // Mãnh Hổ - Cam
+                        team4: '#2dd4bf', // Cá Voi Xanh - Xanh ngọc
+                        primary: '#6366f1', // Tím nhạt game show
+                        darkbg: '#0f172a',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #0f172a; color: white; overflow-x: hidden; }
+        .glass-panel { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
+        .text-shadow { text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        .btn-game { transition: all 0.2s; position: relative; overflow: hidden; }
+        .btn-game:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); }
+        .btn-game:active { transform: translateY(1px); }
+        
+        /* Wheel styles */
+        .wheel-container { position: relative; width: 300px; height: 300px; margin: 0 auto; }
+        .wheel {
+            width: 100%; height: 100%; border-radius: 50%; border: 8px solid white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            transition: transform 4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            /* Gradient set by JS based on teams */
+        }
+        .wheel-pointer {
+            position: absolute; top: -15px; left: 50%; transform: translateX(-50%);
+            width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 30px solid #ef4444;
+            z-index: 10; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
+        }
+        .wheel-center {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 60px; height: 60px; background: white; border-radius: 50%; z-index: 5;
+            display: flex; align-items: center; justify-content: center; font-size: 24px; color: #0f172a; box-shadow: inset 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        /* Animations */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        .shake-effect { animation: shake 0.5s; }
+        
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 15px rgba(255, 255, 255, 0.2); }
+            50% { box-shadow: 0 0 30px rgba(255, 255, 255, 0.6); }
+        }
+        .active-team-card { border: 2px solid white; animation: pulse-glow 2s infinite; transform: scale(1.05); z-index: 10;}
+        
+        /* Options grid */
+        .option-card { cursor: pointer; transition: all 0.2s; }
+        .option-card:hover { background: rgba(255, 255, 255, 0.2); }
+        
+        /* Views */
+        .view { display: none; min-height: 100vh; flex-direction: column; }
+        .view.active { display: flex; }
+        
+        /* Admin tab content */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+<body class="antialiased selection:bg-primary selection:text-white">
+
+    <div id="view-menu" class="view active items-center justify-center relative overflow-hidden bg-gradient-to-br from-indigo-900 via-slate-900 to-purple-900">
+        <!-- Floating background elements -->
+        <div class="absolute top-10 left-10 text-6xl opacity-10"><i class="fas fa-star"></i></div>
+        <div class="absolute bottom-20 right-20 text-8xl opacity-10"><i class="fas fa-trophy"></i></div>
+        <div class="absolute top-1/4 right-10 text-5xl opacity-10"><i class="fas fa-graduation-cap"></i></div>
+        
+        <div class="text-center z-10 p-8 glass-panel rounded-3xl max-w-4xl w-full mx-4 shadow-2xl border-t border-l border-white/20">
+            <h2 class="text-2xl md:text-3xl font-bold text-blue-300 mb-2 uppercase tracking-widest" id="menu-school-name">Trường THPT Ea H'Leo</h2>
+            <h1 class="text-5xl md:text-7xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-yellow-400 to-orange-500 mb-4 text-shadow drop-shadow-lg">
+                10A3 - BỨT PHÁ CÙNG ĐỒNG ĐỘI
+            </h1>
+            <p class="text-xl md:text-2xl text-gray-200 mb-10 italic">"Hiểu về trường – Gắn kết bạn bè – Dũng cảm trưởng thành – Biết ơn và sẻ chia"</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+                <button onclick="changeView('view-game-intro')" class="btn-game md:col-span-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-2xl font-bold py-4 px-8 rounded-full shadow-lg border-2 border-indigo-400 hover:border-white">
+                    <i class="fas fa-play mr-2"></i> BẮT ĐẦU GAME
+                </button>
+                <button onclick="showModal('modal-instructions')" class="btn-game bg-white/10 hover:bg-white/20 text-white font-semibold py-3 px-6 rounded-xl border border-white/30">
+                    <i class="fas fa-book mr-2"></i> HƯỚNG DẪN CHƠI
+                </button>
+                <button onclick="changeView('view-leaderboard')" class="btn-game bg-white/10 hover:bg-white/20 text-white font-semibold py-3 px-6 rounded-xl border border-white/30">
+                    <i class="fas fa-medal mr-2"></i> BẢNG XẾP HẠNG
+                </button>
+                <button onclick="changeView('view-question-bank')" class="btn-game bg-white/10 hover:bg-white/20 text-white font-semibold py-3 px-6 rounded-xl border border-white/30">
+                    <i class="fas fa-list mr-2"></i> KHO CÂU HỎI
+                </button>
+                <button onclick="checkAdminPassword()" class="btn-game bg-white/10 hover:bg-white/20 text-gray-300 font-semibold py-3 px-6 rounded-xl border border-white/30">
+                    <i class="fas fa-cog mr-2"></i> CÀI ĐẶT GIÁO VIÊN
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-hud" class="fixed top-0 left-0 w-full z-40 hidden bg-slate-900/90 backdrop-blur-md border-b border-white/10 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-2 flex justify-between items-center">
+            <div class="text-xl font-bold text-white flex items-center">
+                <span class="bg-indigo-600 px-3 py-1 rounded-lg mr-3 shadow" id="hud-round-info">Vòng 1</span>
+                <span id="hud-question-info" class="text-gray-300">Câu 1/5</span>
+            </div>
+            
+            <div class="flex space-x-2 md:space-x-4" id="top-scoreboard">
+                <!-- Injected via JS -->
+            </div>
+            
+            <div class="flex space-x-2">
+                <button onclick="undoLastScore()" id="btn-undo" class="hidden text-sm bg-yellow-600 hover:bg-yellow-500 text-white px-3 py-1 rounded shadow" title="Hoàn tác điểm">
+                    <i class="fas fa-undo"></i>
+                </button>
+                <button onclick="openAdjustScoreModal()" class="text-sm bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded shadow" title="Điều chỉnh điểm">
+                    <i class="fas fa-star"></i>
+                </button>
+                <button onclick="changeView('view-menu')" class="text-sm bg-red-600 hover:bg-red-500 text-white px-3 py-1 rounded shadow" title="Về trang chủ">
+                    <i class="fas fa-home"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-game-intro" class="view justify-center items-center bg-gradient-to-br from-blue-900 to-purple-900 relative">
+        <div class="text-center z-10 glass-panel p-10 rounded-3xl max-w-3xl w-full mx-4">
+            <h3 class="text-3xl text-blue-300 font-bold mb-2 uppercase tracking-wide" id="intro-round-name">VÒNG 1</h3>
+            <h2 class="text-5xl font-display font-black text-white mb-6 drop-shadow-lg" id="intro-round-title">KHÁM PHÁ NGÔI NHÀ CHUNG</h2>
+            <p class="text-xl text-gray-200 mb-10" id="intro-round-desc">Giúp học sinh tìm hiểu về Trường THPT Ea H’Leo, lớp 10A3 và những người bạn trong tập thể.</p>
+            <button onclick="startRound()" class="btn-game bg-yellow-500 hover:bg-yellow-400 text-slate-900 text-2xl font-bold py-3 px-10 rounded-full shadow-lg">
+                VÀO THI <i class="fas fa-arrow-right ml-2"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="view-wheel" class="view justify-center items-center bg-slate-900 relative pt-20">
+        <div class="text-center z-10">
+            <h2 class="text-4xl font-bold text-white mb-8">VÒNG QUAY GIÀNH QUYỀN TRẢ LỜI</h2>
+            
+            <div class="wheel-container mb-10">
+                <div class="wheel-pointer"></div>
+                <div class="wheel" id="main-wheel"></div>
+                <div class="wheel-center"><i class="fas fa-star text-yellow-500"></i></div>
+            </div>
+            
+            <div id="wheel-result-msg" class="text-3xl font-bold text-yellow-400 mb-8 h-10 opacity-0 transition-opacity duration-500">
+                CHÚC MỪNG ĐỘI...
+            </div>
+            
+            <button id="btn-spin" onclick="spinWheel()" class="btn-game bg-gradient-to-r from-green-500 to-emerald-600 text-white text-2xl font-bold py-4 px-10 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.5)] border-2 border-emerald-400 mb-4">
+                QUAY MAY MẮN
+            </button>
+            <br>
+            <button id="btn-open-question" onclick="showQuestion()" class="hidden btn-game bg-blue-600 hover:bg-blue-500 text-white text-xl font-bold py-3 px-8 rounded-full shadow-lg mt-4">
+                MỞ CÂU HỎI <i class="fas fa-external-link-alt ml-2"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="view-question" class="view bg-slate-800 pt-24 pb-10 px-4 relative">
+        <div class="max-w-6xl mx-auto w-full flex flex-col h-full">
+            
+            <!-- Question header: Active team & Timer -->
+            <div class="flex justify-between items-end mb-6">
+                <div id="active-team-display" class="flex items-center bg-white/10 px-6 py-3 rounded-2xl border-2 border-transparent">
+                    <span id="active-team-icon" class="text-4xl mr-4">🦌</span>
+                    <div>
+                        <p class="text-sm text-gray-300">Đội đang trả lời</p>
+                        <h3 id="active-team-name" class="text-2xl font-bold text-white">Mắt Nai</h3>
+                    </div>
+                </div>
+                
+                <div class="text-center">
+                    <div id="timer-display" class="text-5xl font-display font-black text-white w-24 h-24 rounded-full border-4 border-yellow-400 flex items-center justify-center bg-slate-900 shadow-[0_0_15px_rgba(250,204,21,0.5)]">
+                        30
+                    </div>
+                </div>
+            </div>
+
+            <!-- Question Content -->
+            <div class="glass-panel rounded-3xl p-8 mb-6 shadow-2xl flex-grow flex flex-col justify-center border-t-2 border-white/20 relative" id="question-card">
+                <div class="absolute -top-5 left-1/2 transform -translate-x-1/2 bg-indigo-600 px-6 py-1 rounded-full text-sm font-bold border border-white/30 shadow-lg" id="q-type-badge">TRẮC NGHIỆM</div>
+                
+                <h2 id="q-text" class="text-3xl md:text-4xl font-bold text-white text-center leading-tight mb-8">
+                    Nội dung câu hỏi sẽ hiển thị ở đây?
+                </h2>
+                
+                <!-- Options for MCQ -->
+                <div id="q-options" class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-4xl mx-auto hidden">
+                    <div onclick="selectOption('A')" class="option-card bg-white/10 border border-white/20 rounded-xl p-4 flex items-center cursor-pointer" id="opt-A-container">
+                        <span class="bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl mr-4 shrink-0">A</span>
+                        <p class="text-xl text-gray-100" id="opt-A">Lựa chọn A</p>
+                    </div>
+                    <div onclick="selectOption('B')" class="option-card bg-white/10 border border-white/20 rounded-xl p-4 flex items-center cursor-pointer" id="opt-B-container">
+                        <span class="bg-green-600 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl mr-4 shrink-0">B</span>
+                        <p class="text-xl text-gray-100" id="opt-B">Lựa chọn B</p>
+                    </div>
+                    <div onclick="selectOption('C')" class="option-card bg-white/10 border border-white/20 rounded-xl p-4 flex items-center cursor-pointer" id="opt-C-container">
+                        <span class="bg-orange-600 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl mr-4 shrink-0">C</span>
+                        <p class="text-xl text-gray-100" id="opt-C">Lựa chọn C</p>
+                    </div>
+                    <div onclick="selectOption('D')" class="option-card bg-white/10 border border-white/20 rounded-xl p-4 flex items-center cursor-pointer" id="opt-D-container">
+                        <span class="bg-purple-600 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl mr-4 shrink-0">D</span>
+                        <p class="text-xl text-gray-100" id="opt-D">Lựa chọn D</p>
+                    </div>
+                </div>
+
+                <!-- Result & Explanation (Hidden initially) -->
+                <div id="q-result-area" class="hidden mt-8 p-6 bg-green-900/40 border border-green-500/50 rounded-xl text-center">
+                    <h3 class="text-2xl font-bold text-green-400 mb-2">ĐÁP ÁN: <span id="q-correct-answer"></span></h3>
+                    <p class="text-lg text-gray-200" id="q-explanation">Giải thích chi tiết ở đây.</p>
+                </div>
+            </div>
+
+            <!-- Teacher Controls -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-auto bg-slate-900/50 p-4 rounded-2xl border border-white/10">
+                <div class="col-span-2 md:col-span-4 text-center text-sm text-gray-400 mb-2 uppercase tracking-wider font-bold">Khu vực điều khiển của Giáo viên</div>
+                <button onclick="completeChallenge()" id="btn-complete-challenge" class="hidden btn-game bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-xl shadow">
+                    <i class="fas fa-check-circle mr-1"></i> HOÀN THÀNH THỬ THÁCH
+                </button>
+                <button onclick="openPassModal()" id="btn-pass" class="btn-game bg-orange-500 hover:bg-orange-400 text-white font-bold py-3 px-4 rounded-xl shadow">
+                    <i class="fas fa-exchange-alt mr-1"></i> CHUYỂN QUYỀN
+                </button>
+                <button onclick="showAnswerOnly()" id="btn-show-ans" class="btn-game bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl shadow">
+                    <i class="fas fa-eye mr-1"></i> ĐÁP ÁN
+                </button>
+                <button onclick="nextQuestion()" id="btn-next-q" class="col-span-2 md:col-span-1 btn-game bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 px-4 rounded-xl shadow opacity-50 cursor-not-allowed" disabled>
+                    TIẾP <i class="fas fa-step-forward ml-1"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-round1-summary" class="view justify-center items-center bg-gradient-to-b from-indigo-900 to-blue-900 relative">
+        <div class="z-10 glass-panel p-8 md:p-12 rounded-3xl max-w-4xl w-full mx-4 text-center">
+            <h2 class="text-3xl md:text-5xl font-display font-black text-yellow-400 mb-6 drop-shadow">CHÚC MỪNG CÁC ĐỘI ĐÃ KHÁM PHÁ NGÔI NHÀ CHUNG 10A3!</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-left mb-8 max-w-2xl mx-auto">
+                <div class="bg-white/10 p-4 rounded-xl flex items-center border border-white/20">
+                    <div class="text-4xl mr-4 w-12 text-center">🏫</div>
+                    <div><div class="text-sm text-gray-300">Trường THPT Ea H’Leo</div><div class="text-xl font-bold" id="sum-year">Thành lập năm 1989</div></div>
+                </div>
+                <div class="bg-white/10 p-4 rounded-xl flex items-center border border-white/20">
+                    <div class="text-4xl mr-4 w-12 text-center">📚</div>
+                    <div><div class="text-sm text-gray-300">Toàn trường</div><div class="text-xl font-bold" id="sum-classes">31 lớp học</div></div>
+                </div>
+                <div class="bg-white/10 p-4 rounded-xl flex items-center border border-white/20">
+                    <div class="text-4xl mr-4 w-12 text-center">👧</div>
+                    <div><div class="text-sm text-gray-300">Học sinh nữ lớp 10A3</div><div class="text-xl font-bold text-pink-300" id="sum-girls">25 bạn</div></div>
+                </div>
+                <div class="bg-white/10 p-4 rounded-xl flex items-center border border-white/20">
+                    <div class="text-4xl mr-4 w-12 text-center">👦</div>
+                    <div><div class="text-sm text-gray-300">Học sinh nam lớp 10A3</div><div class="text-xl font-bold text-blue-300" id="sum-boys">20 bạn</div></div>
+                </div>
+                <div class="bg-indigo-600/50 p-4 rounded-xl flex items-center border border-indigo-400 md:col-span-2 justify-center text-center">
+                    <div class="text-4xl mr-4">🎓</div>
+                    <div><div class="text-sm text-gray-200">Tổng sĩ số lớp 10A3</div><div class="text-3xl font-bold text-yellow-300" id="sum-total">45 học sinh</div></div>
+                </div>
+            </div>
+            
+            <p class="text-xl text-gray-200 italic px-4 border-l-4 border-yellow-400 py-2 text-left mb-8 bg-black/20">
+                "<span id="msg-total">45</span> thành viên – 4 đội chơi – 1 tập thể. Mỗi người một cá tính, một thế mạnh, nhưng tất cả cùng tạo nên một lớp <span id="msg-class">10A3</span> đoàn kết, tự tin và tiến bộ."
+            </p>
+            
+            <button onclick="goToNextPhase()" class="btn-game bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xl font-bold py-3 px-10 rounded-full shadow-lg">
+                TIẾP TỤC <i class="fas fa-arrow-right ml-2"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="view-leaderboard" class="view pt-20 pb-10 px-4 bg-slate-900 relative">
+        <button onclick="changeView('view-menu')" class="absolute top-6 left-6 text-white bg-white/10 p-3 rounded-full hover:bg-white/20"><i class="fas fa-arrow-left"></i></button>
+        <div class="max-w-4xl mx-auto w-full">
+            <h2 class="text-5xl font-display font-black text-center text-yellow-400 mb-2" id="lb-title">BẢNG XẾP HẠNG</h2>
+            <p class="text-center text-xl text-gray-300 mb-10" id="lb-subtitle">Kết quả hiện tại</p>
+            
+            <div class="flex flex-col space-y-4" id="leaderboard-container">
+                <!-- Injected via JS -->
+            </div>
+            
+            <div id="end-game-msg" class="hidden mt-10 p-6 glass-panel rounded-2xl text-center border-yellow-500/50 border">
+                <p class="text-2xl text-yellow-100 italic leading-relaxed">
+                    "Chiến thắng lớn nhất không chỉ là số điểm, mà còn là sự hiểu biết, lòng dũng cảm, lòng biết ơn và tinh thần đoàn kết mà mỗi thành viên mang đến cho tập thể <span class="lbl-class-name">10A3</span>."
+                </p>
+                <div class="mt-6 flex justify-center space-x-4">
+                    <button onclick="exportScores()" class="bg-blue-600 hover:bg-blue-500 text-white py-2 px-6 rounded-lg font-bold"><i class="fas fa-file-export mr-2"></i> Xuất kết quả (CSV)</button>
+                    <button onclick="resetGame(true)" class="bg-red-600 hover:bg-red-500 text-white py-2 px-6 rounded-lg font-bold"><i class="fas fa-redo mr-2"></i> Chơi lại từ đầu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pass Modal -->
+    <div id="modal-pass" class="fixed inset-0 bg-black/80 z-50 hidden flex justify-center items-center backdrop-blur-sm">
+        <div class="bg-slate-800 p-8 rounded-3xl max-w-md w-full border border-white/20">
+            <h3 class="text-2xl font-bold text-white mb-6 text-center">CHUYỂN QUYỀN TRẢ LỜI CHO:</h3>
+            <div class="grid grid-cols-1 gap-3" id="pass-team-list">
+                <!-- Injected via JS -->
+            </div>
+            <button onclick="hideModal('modal-pass')" class="mt-6 w-full py-3 bg-gray-600 hover:bg-gray-500 text-white rounded-xl font-bold">HỦY</button>
+        </div>
+    </div>
+
+    <!-- Adjust Score Modal -->
+    <div id="modal-adjust-score" class="fixed inset-0 bg-black/80 z-50 hidden flex justify-center items-center backdrop-blur-sm">
+        <div class="bg-slate-800 p-8 rounded-3xl max-w-md w-full border border-white/20">
+            <h3 class="text-2xl font-bold text-white mb-6 text-center">ĐIỀU CHỈNH ĐIỂM SỐ</h3>
+            <select id="adjust-team-select" class="w-full bg-slate-700 text-white p-3 rounded-lg mb-4 border border-slate-600">
+                <!-- Injected via JS -->
+            </select>
+            <div class="flex space-x-4 mb-4">
+                <input type="number" id="adjust-amount" class="w-1/2 bg-slate-700 text-white p-3 rounded-lg border border-slate-600" placeholder="Số điểm (VD: 10, -5)">
+                <button onclick="applyAdjustScore()" class="w-1/2 bg-yellow-600 hover:bg-yellow-500 text-white font-bold rounded-lg shadow">ÁP DỤNG</button>
+            </div>
+            <input type="text" id="adjust-reason" class="w-full bg-slate-700 text-white p-3 rounded-lg mb-6 border border-slate-600" placeholder="Lý do (Tùy chọn)">
+            <button onclick="hideModal('modal-adjust-score')" class="w-full py-3 bg-gray-600 hover:bg-gray-500 text-white rounded-xl font-bold">ĐÓNG</button>
+        </div>
+    </div>
+
+    <!-- Instructions Modal -->
+    <div id="modal-instructions" class="fixed inset-0 bg-black/80 z-50 hidden flex justify-center items-center backdrop-blur-sm p-4">
+        <div class="bg-slate-800 p-6 md:p-8 rounded-3xl max-w-3xl w-full border border-white/20 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
+                <h3 class="text-2xl font-bold text-yellow-400">HƯỚNG DẪN CHƠI</h3>
+                <button onclick="hideModal('modal-instructions')" class="text-gray-400 hover:text-white text-2xl"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="text-gray-200 space-y-4 text-sm md:text-base leading-relaxed">
+                <p><strong>Cấu trúc:</strong> Game gồm 4 vòng, mỗi vòng 5 câu hỏi.</p>
+                <p><strong>Luật giành quyền:</strong></p>
+                <ul class="list-disc pl-5 space-y-1">
+                    <li>Trước mỗi câu hỏi, giáo viên bấm <strong>Quay May Mắn</strong> để chọn đội trả lời đầu tiên.</li>
+                    <li>Đội được chọn sẽ có thời gian suy nghĩ (mặc định 30s).</li>
+                    <li>Trả lời <strong>ĐÚNG</strong>: Cộng điểm (+10), hiển thị đáp án, chuyển câu tiếp theo.</li>
+                    <li>Trả lời <strong>SAI</strong>: Không có điểm. Đội đó bị mất quyền. Giáo viên bấm <strong>SAI (Nhường)</strong>, sau đó chọn <strong>CHUYỂN QUYỀN</strong> để gọi đội khác.</li>
+                    <li>Nếu tất cả đều sai: Bấm <strong>ĐÁP ÁN</strong> để giải thích và chuyển câu.</li>
+                </ul>
+                <p><strong>Tính năng Giáo viên:</strong></p>
+                <ul class="list-disc pl-5 space-y-1">
+                    <li>Giáo viên là người quyết định ĐÚNG/SAI dựa trên câu trả lời thực tế của học sinh.</li>
+                    <li>Nút <strong><i class="fas fa-undo"></i> (Góc trên)</strong>: Hoàn tác thao tác cộng điểm vừa thực hiện nếu lỡ bấm nhầm.</li>
+                    <li>Nút <strong><i class="fas fa-star"></i> (Góc trên)</strong>: Cộng điểm thưởng hoặc trừ điểm thủ công.</li>
+                    <li><strong>Cài đặt:</strong> (Mật khẩu: 12345) Cho phép sửa dữ liệu trường, lớp, đội chơi, câu hỏi.</li>
+                </ul>
+            </div>
+            <button onclick="hideModal('modal-instructions')" class="mt-8 w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-lg shadow-lg">ĐÃ HIỂU</button>
+        </div>
+    </div>
+
+    <!-- Admin Panel View -->
+    <div id="view-admin" class="view pt-16 pb-10 px-4 bg-slate-100 text-slate-800 min-h-screen relative hidden">
+        <div class="fixed top-0 left-0 w-full bg-slate-900 text-white p-3 flex justify-between items-center z-40 shadow-md">
+            <h2 class="text-xl font-bold"><i class="fas fa-cog mr-2"></i> QUẢN TRỊ GIÁO VIÊN</h2>
+            <div class="space-x-2">
+                <button onclick="saveSettings()" class="bg-green-600 hover:bg-green-500 px-4 py-1.5 rounded font-bold text-sm"><i class="fas fa-save mr-1"></i> LƯU</button>
+                <button onclick="changeView('view-menu')" class="bg-gray-600 hover:bg-gray-500 px-4 py-1.5 rounded font-bold text-sm"><i class="fas fa-times mr-1"></i> ĐÓNG</button>
+            </div>
+        </div>
+
+        <div class="max-w-6xl mx-auto w-full mt-4 bg-white rounded-xl shadow-lg overflow-hidden flex flex-col md:flex-row min-h-[80vh]">
+            <!-- Admin Sidebar -->
+            <div class="w-full md:w-64 bg-slate-800 text-white flex-shrink-0">
+                <ul class="flex md:flex-col p-2 space-x-2 md:space-x-0 md:space-y-2 overflow-x-auto">
+                    <li><button onclick="switchAdminTab('tab-general')" class="admin-tab-btn w-full text-left px-4 py-3 rounded-lg hover:bg-slate-700 active-tab bg-blue-600 font-semibold"><i class="fas fa-info-circle w-5 text-center mr-2"></i> Thông tin chung</button></li>
+                    <li><button onclick="switchAdminTab('tab-teams')" class="admin-tab-btn w-full text-left px-4 py-3 rounded-lg hover:bg-slate-700"><i class="fas fa-users w-5 text-center mr-2"></i> Đội chơi</button></li>
+                    <li><button onclick="switchAdminTab('tab-questions')" class="admin-tab-btn w-full text-left px-4 py-3 rounded-lg hover:bg-slate-700"><i class="fas fa-question-circle w-5 text-center mr-2"></i> Ngân hàng câu hỏi</button></li>
+                    <li><button onclick="switchAdminTab('tab-system')" class="admin-tab-btn w-full text-left px-4 py-3 rounded-lg hover:bg-slate-700"><i class="fas fa-database w-5 text-center mr-2"></i> Dữ liệu & Hệ thống</button></li>
+                </ul>
+            </div>
+
+            <!-- Admin Content -->
+            <div class="flex-grow p-6 overflow-y-auto">
+                <!-- General Info Tab -->
+                <div id="tab-general" class="tab-content active">
+                    <h3 class="text-2xl font-bold mb-6 border-b pb-2">Thông tin Trường & Lớp</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">Tên Trường</label>
+                            <input type="text" id="cfg-school-name" class="w-full p-2 border rounded focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">Năm thành lập trường</label>
+                            <input type="number" id="cfg-school-year" class="w-full p-2 border rounded">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">Số lớp học toàn trường</label>
+                            <input type="number" id="cfg-school-classes" class="w-full p-2 border rounded">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">Tên Lớp</label>
+                            <input type="text" id="cfg-class-name" class="w-full p-2 border rounded">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">Số học sinh nữ</label>
+                            <input type="number" id="cfg-class-girls" class="w-full p-2 border rounded" onchange="calcTotalStudents()">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">Số học sinh nam</label>
+                            <input type="number" id="cfg-class-boys" class="w-full p-2 border rounded" onchange="calcTotalStudents()">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">Tổng số học sinh (Tự tính)</label>
+                            <input type="number" id="cfg-class-total" class="w-full p-2 border rounded bg-gray-100" readonly>
+                        </div>
+                        <div class="col-span-1 md:col-span-2">
+                            <p class="text-sm text-blue-600 bg-blue-50 p-3 rounded border border-blue-200 mt-2">
+                                <i class="fas fa-info-circle mr-1"></i> <strong>Lưu ý quan trọng:</strong> Nếu bạn thay đổi các thông số ở trên, bạn cần vào tab <strong>Ngân hàng câu hỏi -> Vòng 1</strong> để cập nhật lại câu hỏi và đáp án cho khớp với số liệu mới.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Teams Tab -->
+                <div id="tab-teams" class="tab-content">
+                    <h3 class="text-2xl font-bold mb-6 border-b pb-2">Cài đặt 4 Đội chơi</h3>
+                    <div id="admin-teams-list" class="space-y-4">
+                        <!-- Injected via JS -->
+                    </div>
+                </div>
+
+                <!-- Questions Tab -->
+                <div id="tab-questions" class="tab-content">
+                    <div class="flex justify-between items-center mb-6 border-b pb-2">
+                        <h3 class="text-2xl font-bold">Ngân hàng câu hỏi</h3>
+                        <select id="admin-round-select" class="p-2 border rounded font-bold text-blue-700 bg-blue-50" onchange="renderAdminQuestions()">
+                            <option value="1">Vòng 1: Khám Phá Ngôi Nhà Chung</option>
+                            <option value="2">Vòng 2: Thấu Hiểu Bản Thân</option>
+                            <option value="3">Vòng 3: Dũng Cảm Vượt Thử Thách</option>
+                            <option value="4">Vòng 4: Kết Nối Yêu Thương</option>
+                        </select>
+                    </div>
+                    
+                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 text-sm">
+                        <p><strong>Hướng dẫn:</strong> Mỗi vòng cần đúng 5 câu hỏi. Sửa trực tiếp nội dung bên dưới. Đối với câu trắc nghiệm, gõ đáp án đúng vào ô tương ứng (VD: A, B, C, D). Đối với câu thử thách, chọn loại "Thử thách/Mở".</p>
+                    </div>
+
+                    <div id="admin-questions-list" class="space-y-6">
+                        <!-- Injected via JS -->
+                    </div>
+                    
+                    <button onclick="adminAddQuestion()" class="mt-4 w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg border-2 border-dashed border-gray-300">
+                        <i class="fas fa-plus"></i> Thêm câu hỏi phụ (Dự phòng)
+                    </button>
+                </div>
+
+                <!-- System Tab -->
+                <div id="tab-system" class="tab-content">
+                    <h3 class="text-2xl font-bold mb-6 border-b pb-2">Hệ thống & Dữ liệu</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <h4 class="font-bold text-lg mb-3">Cài đặt Game</h4>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-1">Thời gian đếm ngược (giây)</label>
+                                    <input type="number" id="cfg-timer" class="w-full p-2 border rounded">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-1">Điểm cộng mỗi câu đúng</label>
+                                    <input type="number" id="cfg-points" class="w-full p-2 border rounded">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h4 class="font-bold text-lg mb-3 text-red-600">Quản lý Dữ liệu</h4>
+                            <div class="space-y-3">
+                                <button onclick="resetGame(true)" class="w-full text-left px-4 py-2 border border-red-300 text-red-700 hover:bg-red-50 rounded bg-white font-semibold">
+                                    <i class="fas fa-undo mr-2"></i> Reset Điểm số & Chơi lại
+                                </button>
+                                <button onclick="resetToDefaults()" class="w-full text-left px-4 py-2 border border-red-600 text-white bg-red-600 hover:bg-red-700 rounded font-semibold">
+                                    <i class="fas fa-trash-alt mr-2"></i> Khôi phục dữ liệu gốc (Xóa bộ nhớ)
+                                </button>
+                                <button onclick="exportJSON()" class="w-full text-left px-4 py-2 border border-blue-300 text-blue-700 hover:bg-blue-50 rounded bg-white font-semibold mt-4">
+                                    <i class="fas fa-download mr-2"></i> Sao lưu bộ câu hỏi (JSON)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // Default Data strictly adhering to the prompt requirements
+        const defaultData = {
+            schoolInfo: {
+                name: "Trường THPT Ea H'Leo",
+                year: 1989,
+                classes: 31,
+                className: "10A3",
+                girls: 25,
+                boys: 20,
+                total: 45
+            },
+            teams: [
+                { id: 1, name: "Mắt Nai", color: "#4ade80", icon: "🦌", slogan: "Tinh mắt – Bình tĩnh – Chính xác", score: 0, correct: 0 },
+                { id: 2, name: "Đại Bàng", color: "#3b82f6", icon: "🦅", slogan: "Bản lĩnh – Quyết đoán – Vươn cao", score: 0, correct: 0 },
+                { id: 3, name: "MÃNH HỔ", color: "#f97316", icon: "🐯", slogan: "Dũng cảm – Kiên trì – Bứt phá", score: 0, correct: 0 },
+                { id: 4, name: "Cá Voi Xanh", color: "#2dd4bf", icon: "🐳", slogan: "Đoàn kết – Sẻ chia – Cùng tiến bộ", score: 0, correct: 0 }
+            ],
+            settings: {
+                timer: 30,
+                pointsPerRight: 10
+            },
+            questions: {
+                "1": [
+                    { type: "mcq", text: "Trường THPT Ea H’Leo được thành lập vào năm nào?", options: { A: "1985", B: "1987", C: "1989", D: "1991" }, answer: "C", explain: "Trường THPT Ea H’Leo được thành lập năm 1989." },
+                    { type: "mcq", text: "Theo thông tin được cung cấp cho trò chơi, Trường THPT Ea H’Leo có bao nhiêu lớp học?", options: { A: "27 lớp", B: "29 lớp", C: "31 lớp", D: "33 lớp" }, answer: "C", explain: "Trường chúng ta hiện có 31 lớp học." },
+                    { type: "mcq", text: "Lớp 10A3 có bao nhiêu học sinh nữ?", options: { A: "20 học sinh", B: "22 học sinh", C: "25 học sinh", D: "27 học sinh" }, answer: "C", explain: "Lớp 10A3 có 25 bạn nữ đáng yêu." },
+                    { type: "mcq", text: "Lớp 10A3 có bao nhiêu học sinh nam?", options: { A: "18 học sinh", B: "20 học sinh", C: "23 học sinh", D: "25 học sinh" }, answer: "B", explain: "Lớp 10A3 có 20 bạn nam mạnh mẽ." },
+                    { type: "mcq", text: "Tổng số học sinh của lớp 10A3 là bao nhiêu?", options: { A: "40 học sinh", B: "42 học sinh", C: "45 học sinh", D: "48 học sinh" }, answer: "C", explain: "Lớp 10A3 là một tập thể đoàn kết gồm 45 thành viên." }
+                ],
+                "2": [
+                    { type: "mcq", text: "Khi được giao một nhiệm vụ chung của lớp nhưng em chưa biết cách thực hiện, em nên làm gì?", options: { A: "Từ chối ngay.", B: "Chờ người khác làm thay.", C: "Chủ động hỏi, tìm hiểu và nhờ bạn hoặc giáo viên hướng dẫn.", D: "Làm qua loa cho xong." }, answer: "C", explain: "Chủ động học hỏi thể hiện tinh thần trách nhiệm và ý chí cầu tiến." },
+                    { type: "mcq", text: "Khi mắc lỗi khiến nhóm bị ảnh hưởng, cách ứng xử nào thể hiện tinh thần trách nhiệm?", options: { A: "Đổ lỗi cho bạn.", B: "Im lặng để mọi người quên đi.", C: "Thành thật nhận lỗi, xin lỗi và tìm cách khắc phục.", D: "Tranh cãi để bảo vệ mình." }, answer: "C", explain: "Dám nhận lỗi và sửa lỗi là biểu hiện của người dũng cảm và trưởng thành." },
+                    { type: "mcq", text: "Khi hai bạn trong lớp có ý kiến trái ngược nhau, em nên làm gì?", options: { A: "Bênh vực bạn thân bất kể đúng sai.", B: "Lắng nghe cả hai phía và góp ý bình tĩnh.", C: "Kể chuyện đó cho các lớp khác.", D: "Kêu gọi mọi người đứng về một phía." }, answer: "B", explain: "Khách quan, bình tĩnh lắng nghe sẽ giúp giải quyết mâu thuẫn hiệu quả." },
+                    { type: "mcq", text: "Kỹ năng nào giúp em trình bày ý kiến trước tập thể hiệu quả hơn?", options: { A: "Nói thật nhanh để tiết kiệm thời gian.", B: "Chuẩn bị nội dung, nói rõ ràng, tự tin và tôn trọng người nghe.", C: "Chỉ phát biểu khi chắc chắn mọi người đồng ý.", D: "Ngắt lời người khác để thể hiện quan điểm." }, answer: "B", explain: "Sự chuẩn bị kỹ lưỡng và thái độ tôn trọng là chìa khóa của giao tiếp tốt." },
+                    { type: "mcq", text: "Khi nhận được lời góp ý về một khuyết điểm của mình, em nên làm gì?", options: { A: "Giận dỗi và không nói chuyện với người góp ý.", B: "Phản bác ngay lập tức.", C: "Bình tĩnh lắng nghe, xem xét điều hợp lý và điều chỉnh nếu cần.", D: "Cho rằng người khác luôn muốn chê bai mình." }, answer: "C", explain: "Biết lắng nghe góp ý giúp ta hoàn thiện bản thân mỗi ngày." }
+                ],
+                "3": [
+                    { type: "mcq", text: "Em biết một bạn bị trêu chọc, cô lập trong lớp. Em sẽ làm gì?", options: { A: "Cùng cười để không bị tách khỏi nhóm.", B: "Quay video đăng lên mạng.", C: "Không hùa theo, động viên bạn và báo giáo viên hoặc người lớn đáng tin cậy khi cần.", D: "Mặc kệ vì không liên quan đến mình." }, answer: "C", explain: "Bảo vệ bạn bè khỏi bạo lực học đường là hành động dũng cảm và đúng đắn." },
+                    { type: "mcq", text: "Em phát hiện nhóm bạn đang chia sẻ thông tin sai sự thật về một bạn trong lớp. Em nên làm gì?", options: { A: "Chia sẻ tiếp để mọi người biết.", B: "Kiểm chứng thông tin, không phát tán và khuyên các bạn dừng lại.", C: "Bình luận chế giễu.", D: "Tạo thêm tin đồn." }, answer: "B", explain: "Dừng lan truyền tin đồn thất thiệt là bảo vệ danh dự của người khác." },
+                    { type: "mcq", text: "Khi phải phát biểu trước lớp nhưng rất hồi hộp, cách nào phù hợp nhất?", options: { A: "Xin nghỉ học để tránh phát biểu.", B: "Chuẩn bị trước, tập nói, hít thở bình tĩnh và mạnh dạn bắt đầu.", C: "Đọc thật nhanh để kết thúc sớm.", D: "Để bạn làm thay tất cả." }, answer: "B", explain: "Đối mặt với nỗi sợ và chuẩn bị kỹ là cách tốt nhất để vượt qua." },
+                    { type: "mcq", text: "Nếu bạn thân rủ em gian lận trong kiểm tra, em sẽ làm gì?", options: { A: "Đồng ý vì là bạn thân.", B: "Làm theo vì sợ mất lòng bạn.", C: "Từ chối một cách rõ ràng, giải thích rằng cần trung thực và khuyến khích bạn tự làm bài.", D: "Giúp bạn nhưng không để giáo viên biết." }, answer: "C", explain: "Tình bạn thật sự là giúp nhau tiến bộ bằng con đường trung thực." },
+                    { type: "challenge", text: "THỬ THÁCH DŨNG CẢM: Đại diện đội hãy chọn 1 nhiệm vụ và thực hiện trong 30–60s:\n- Nói một lời xin lỗi chân thành.\n- Chia sẻ một điều muốn thay đổi ở bản thân.\n- Nói lời cảm ơn đến người đã giúp đỡ.\n- Đưa ra 1 ý kiến giải quyết mâu thuẫn lớp.", answer: "", explain: "Giáo viên đánh giá dựa trên sự chân thành, nỗ lực và cách thực hiện để cho điểm thủ công." }
+                ],
+                "4": [
+                    { type: "mcq", text: "Vì sao chúng ta cần biết ơn thầy cô, cha mẹ và những người đã giúp đỡ mình?", options: { A: "Để được khen thưởng.", B: "Vì lòng biết ơn giúp chúng ta trân trọng sự quan tâm, sống có trách nhiệm và biết đáp lại bằng hành động tốt.", C: "Để người khác làm việc giúp mình nhiều hơn.", D: "Vì đó chỉ là một quy định bắt buộc." }, answer: "B", explain: "Lòng biết ơn là cội nguồn của nhân cách tốt đẹp." },
+                    { type: "mcq", text: "Khi một bạn trong nhóm học chưa tốt, hành động nào thể hiện tinh thần đoàn kết?", options: { A: "Chê bai bạn trước lớp.", B: "Loại bạn khỏi nhóm.", C: "Giải thích lại bài, chia sẻ tài liệu và cùng bạn tiến bộ.", D: "Làm hết nhiệm vụ thay bạn mà không trao đổi." }, answer: "C", explain: "Đoàn kết là cùng nhau tiến bộ, không bỏ ai lại phía sau." },
+                    { type: "mcq", text: "Lớp được giao thực hiện một hoạt động chung nhưng có bạn không tích cực tham gia. Em nên làm gì?", options: { A: "Phê bình bạn ngay trước toàn trường.", B: "Trao đổi riêng, tìm hiểu khó khăn của bạn và cùng phân công công việc phù hợp.", C: "Mặc kệ để các bạn khác làm.", D: "Tự ý gạch tên bạn khỏi danh sách lớp." }, answer: "B", explain: "Sự thấu hiểu và phân công hợp lý giúp gắn kết mọi thành viên." },
+                    { type: "mcq", text: "Hành động nào thể hiện lòng biết ơn bằng việc làm cụ thể?", options: { A: "Chỉ nói lời cảm ơn nhưng không giữ lời hứa.", B: "Trân trọng sự giúp đỡ, chăm chỉ học tập, cư xử lễ phép và sẵn sàng giúp đỡ người khác.", C: "Chỉ biết ơn khi nhận được quà.", D: "Cho rằng người thân có trách nhiệm phải làm mọi việc cho mình." }, answer: "B", explain: "Hành động thực tế luôn có giá trị hơn ngàn lời nói." },
+                    { type: "challenge", text: "THỬ THÁCH ĐỒNG ĐỘI: Trong 60 giây, cả đội hãy thống nhất và trình bày 3 việc làm cụ thể để lớp 10A3 trở thành tập thể đoàn kết, tích cực và có trách nhiệm.", answer: "", explain: "Gợi ý: Không nói xấu; Hỗ trợ học tập; Giữ vệ sinh; Tôn trọng khác biệt; Biết xin lỗi/cảm ơn. GV chấm điểm theo 3 tiêu chí: thiết thực, hợp tác, trình bày." }
+                ]
+            }
+        };
+
+        const roundNames = [
+            "KHÁM PHÁ NGÔI NHÀ CHUNG",
+            "THẤU HIỂU BẢN THÂN",
+            "DŨNG CẢM VƯỢT THỬ THÁCH",
+            "KẾT NỐI YÊU THƯƠNG – SỨC MẠNH ĐOÀN KẾT"
+        ];
+
+        // Global State Objects
+        let appData = null;
+        let gameState = {
+            currentRound: 1,
+            currentQuestionIndex: 0,
+            activeTeamId: null,
+            teamsPlayedThisQ: [], // IDs of teams that already tried this question
+            wheelBag: [], // For fair random selection
+            timer: null,
+            timeLeft: 0,
+            phase: 'menu', // menu, intro, wheel, question, summary, end
+            isQuestionDone: false,
+            lastAction: null // For undo
+        };
+
+        function initApp() {
+            // Load from localStorage or use default
+            const savedData = localStorage.getItem('game10a3_data');
+            if (savedData) {
+                try {
+                    appData = JSON.parse(savedData);
+                    // Merge any missing structure
+                    if(!appData.schoolInfo) appData.schoolInfo = defaultData.schoolInfo;
+                } catch(e) { appData = JSON.parse(JSON.stringify(defaultData)); }
+            } else {
+                appData = JSON.parse(JSON.stringify(defaultData));
+            }
+
+            const savedState = localStorage.getItem('game10a3_state');
+            if (savedState) {
+                try { gameState = JSON.parse(savedState); } catch(e) {}
+            }
+            
+            // Re-bind names to UI
+            updateStaticUI();
+            
+            // Route based on state
+            if (gameState.phase !== 'menu' && gameState.phase !== 'end') {
+                updateScoreboardUI();
+                if(gameState.phase === 'question') {
+                    renderCurrentQuestion();
+                    changeView('view-question');
+                    document.getElementById('game-hud').classList.remove('hidden');
+                } else if(gameState.phase === 'wheel') {
+                    prepWheel();
+                    changeView('view-wheel');
+                    document.getElementById('game-hud').classList.remove('hidden');
+                }
+            } else {
+                changeView('view-menu');
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('game10a3_data', JSON.stringify(appData));
+        }
+        function saveState() {
+            localStorage.setItem('game10a3_state', JSON.stringify(gameState));
+        }
+
+        function updateStaticUI() {
+            document.getElementById('menu-school-name').textContent = appData.schoolInfo.name;
+            const classElements = document.querySelectorAll('.lbl-class-name');
+            classElements.forEach(el => el.textContent = appData.schoolInfo.className);
+        }
+
+        const sounds = {
+            ready: false,
+            synth: null,
+            init: function() {
+                if(this.ready) return;
+                this.synth = new Tone.PolySynth(Tone.Synth).toDestination();
+                this.synth.set({ oscillator: { type: "sine" }, envelope: { attack: 0.05, decay: 0.1, sustain: 0.3, release: 1 } });
+                Tone.start();
+                this.ready = true;
+            },
+            playTick: function() {
+                if(!this.ready) return;
+                const tic = new Tone.Synth({oscillator: {type: 'square'}, envelope: {attack: 0.01, decay: 0.05, sustain: 0, release: 0.01}}).toDestination();
+                tic.volume.value = -15;
+                tic.triggerAttackRelease("C5", "32n");
+            },
+            playSpin: function() {
+                 if(!this.ready) return;
+                 const synth = new Tone.Synth({oscillator: {type: 'triangle'}}).toDestination();
+                 synth.volume.value = -10;
+                 const notes = ["C4","E4","G4","C5"];
+                 let i = 0;
+                 const interval = setInterval(() => {
+                     synth.triggerAttackRelease(notes[i%4], "16n");
+                     i++;
+                     if(i > 20) clearInterval(interval);
+                 }, 150);
+            },
+            playWin: function() {
+                if(!this.ready) return;
+                this.synth.triggerAttackRelease(["C4", "E4", "G4", "C5"], "1n");
+            },
+            playWrong: function() {
+                if(!this.ready) return;
+                const synth = new Tone.Synth({ oscillator: {type: 'triangle'}, envelope:{attack:0.1, decay:0.2, sustain:0.5, release:0.5} }).toDestination();
+                synth.volume.value = -5;
+                synth.triggerAttackRelease("D3", "8n", "+0");
+                synth.triggerAttackRelease("Db3", "8n", "+0.2");
+                synth.triggerAttackRelease("C3", "1n", "+0.4");
+            }
+        };
+
+        function changeView(viewId) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+            
+            if (viewId === 'view-menu' || viewId === 'view-admin') {
+                document.getElementById('game-hud').classList.add('hidden');
+            } else if (viewId !== 'view-round1-summary' && viewId !== 'view-leaderboard') {
+                document.getElementById('game-hud').classList.remove('hidden');
+                updateScoreboardUI();
+            }
+            
+            window.scrollTo(0,0);
+        }
+
+        function showModal(modalId) { document.getElementById(modalId).classList.remove('hidden'); }
+        function hideModal(modalId) { document.getElementById(modalId).classList.add('hidden'); }
+
+        function startGame() {
+            sounds.init();
+            resetGame(false); // Reset state but don't force reload
+            gameState.phase = 'intro';
+            gameState.currentRound = 1;
+            gameState.currentQuestionIndex = 0;
+            saveState();
+            prepRoundIntro();
+            changeView('view-game-intro');
+        }
+
+        function prepRoundIntro() {
+            const rIdx = gameState.currentRound - 1;
+            document.getElementById('intro-round-name').textContent = `VÒNG ${gameState.currentRound}`;
+            document.getElementById('intro-round-title').textContent = roundNames[rIdx];
+            
+            const descs = [
+                `Giúp học sinh tìm hiểu về ${appData.schoolInfo.name}, lớp ${appData.schoolInfo.className} và những người bạn trong tập thể.`,
+                "Giúp học sinh nhận biết điểm mạnh, trách nhiệm, cách ứng xử và kỹ năng giao tiếp.",
+                "Rèn lòng dũng cảm, khả năng xử lý tình huống, bảo vệ điều đúng đắn và vượt qua tâm lý e ngại.",
+                "Bồi dưỡng lòng biết ơn, sự sẻ chia, tinh thần hợp tác và trách nhiệm với tập thể."
+            ];
+            document.getElementById('intro-round-desc').textContent = descs[rIdx];
+            
+            document.getElementById('hud-round-info').textContent = `Vòng ${gameState.currentRound}`;
+        }
+
+        function startRound() {
+            prepWheel();
+        }
+
+        function prepWheel() {
+            sounds.init();
+            gameState.phase = 'wheel';
+            gameState.activeTeamId = null;
+            gameState.teamsPlayedThisQ = [];
+            gameState.isQuestionDone = false;
+            saveState();
+
+            // Setup fair bag if empty
+            if (gameState.wheelBag.length === 0) {
+                gameState.wheelBag = [1, 2, 3, 4].sort(() => Math.random() - 0.5);
+            }
+
+            document.getElementById('hud-question-info').textContent = `Câu ${gameState.currentQuestionIndex + 1}/${appData.questions[gameState.currentRound].length}`;
+            
+            const wheel = document.getElementById('main-wheel');
+            wheel.style.transition = 'none';
+            wheel.style.transform = 'rotate(0deg)';
+            
+            // Draw colors on wheel
+            const c1 = appData.teams[0].color;
+            const c2 = appData.teams[1].color;
+            const c3 = appData.teams[2].color;
+            const c4 = appData.teams[3].color;
+            wheel.style.background = `conic-gradient(${c1} 0 90deg, ${c2} 90deg 180deg, ${c3} 180deg 270deg, ${c4} 270deg 360deg)`;
+            
+            document.getElementById('btn-spin').classList.remove('hidden');
+            document.getElementById('btn-open-question').classList.add('hidden');
+            document.getElementById('wheel-result-msg').style.opacity = '0';
+            
+            changeView('view-wheel');
+        }
+
+        function spinWheel() {
+            sounds.playSpin();
+            document.getElementById('btn-spin').classList.add('hidden');
+            
+            // Pick fair winner
+            const winnerId = gameState.wheelBag.pop();
+            gameState.activeTeamId = winnerId;
+            const winnerIdx = winnerId - 1;
+            
+            // Calculate rotation (center of segment)
+            // Segments: T1(0-90), T2(90-180), T3(180-270), T4(270-360)
+            // Top pointer is at 0deg. To make segment X land at top, we rotate backward.
+            // Center angles: T1: 45, T2: 135, T3: 225, T4: 315
+            const centers = [45, 135, 225, 315];
+            const targetAngle = 360 * 5 + (360 - centers[winnerIdx]); // 5 spins + land
+            
+            const wheel = document.getElementById('main-wheel');
+            wheel.style.transition = 'transform 4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            wheel.style.transform = `rotate(${targetAngle}deg)`;
+            
+            setTimeout(() => {
+                const team = appData.teams[winnerIdx];
+                const msg = document.getElementById('wheel-result-msg');
+                msg.innerHTML = `CHÚC MỪNG ĐỘI <span style="color:${team.color}">${team.name}</span>!`;
+                msg.style.opacity = '1';
+                
+                document.getElementById('btn-open-question').classList.remove('hidden');
+                saveState();
+            }, 4200);
+        }
+
+        function showQuestion() {
+            sounds.init();
+            gameState.phase = 'question';
+            saveState();
+            renderCurrentQuestion();
+            changeView('view-question');
+            startTimer();
+        }
+
+        function renderCurrentQuestion() {
+            const qList = appData.questions[gameState.currentRound];
+            const q = qList[gameState.currentQuestionIndex];
+            const team = appData.teams.find(t => t.id === gameState.activeTeamId);
+            
+            // Header UI
+            const teamDisplay = document.getElementById('active-team-display');
+            teamDisplay.style.backgroundColor = team.color + '40'; // 25% opacity bg
+            teamDisplay.style.borderColor = team.color;
+            document.getElementById('active-team-icon').textContent = team.icon;
+            document.getElementById('active-team-name').textContent = team.name;
+            document.getElementById('active-team-name').style.color = team.color;
+            
+            // Question UI
+            document.getElementById('q-text').textContent = q.text;
+            
+            const optsContainer = document.getElementById('q-options');
+            if (q.type === 'mcq') {
+                document.getElementById('q-type-badge').textContent = 'TRẮC NGHIỆM';
+                optsContainer.classList.remove('hidden');
+                document.getElementById('opt-A').textContent = q.options.A;
+                document.getElementById('opt-B').textContent = q.options.B;
+                document.getElementById('opt-C').textContent = q.options.C;
+                document.getElementById('opt-D').textContent = q.options.D;
+                // Reset styling
+                ['A','B','C','D'].forEach(opt => {
+                    const el = document.getElementById(`opt-${opt}-container`);
+                    el.classList.remove('ring-4', 'ring-green-500', 'bg-green-900/50', 'ring-red-500', 'bg-red-900/50', 'opacity-50');
+                });
+                document.getElementById('btn-complete-challenge').classList.add('hidden');
+            } else {
+                document.getElementById('q-type-badge').textContent = 'THỬ THÁCH/MỞ';
+                optsContainer.classList.add('hidden');
+                document.getElementById('btn-complete-challenge').classList.remove('hidden');
+            }
+            
+            // Reset result area & buttons
+            document.getElementById('q-result-area').classList.add('hidden');
+            
+            if(gameState.isQuestionDone) {
+                disableControls(true);
+                showAnswerOnly();
+            } else {
+                disableControls(false);
+            }
+        }
+
+        function startTimer() {
+            clearInterval(gameState.timer);
+            gameState.timeLeft = appData.settings.timer;
+            updateTimerUI();
+            
+            gameState.timer = setInterval(() => {
+                gameState.timeLeft--;
+                updateTimerUI();
+                
+                if(gameState.timeLeft > 0 && gameState.timeLeft <= 5) sounds.playTick();
+                
+                if (gameState.timeLeft <= 0) {
+                    clearInterval(gameState.timer);
+                    document.getElementById('timer-display').classList.add('text-red-500', 'border-red-500');
+                    document.getElementById('timer-display').classList.remove('text-white', 'border-yellow-400');
+                }
+            }, 1000);
+        }
+
+        function updateTimerUI() {
+            const t = document.getElementById('timer-display');
+            t.textContent = gameState.timeLeft;
+            t.classList.remove('text-red-500', 'border-red-500');
+            t.classList.add('text-white', 'border-yellow-400');
+        }
+
+        function stopTimer() {
+            clearInterval(gameState.timer);
+        }
+
+        function selectOption(selectedOpt) {
+            if(gameState.isQuestionDone) return;
+            
+            // Đảm bảo âm thanh được cấp quyền khi tương tác
+            sounds.init();
+            
+            const q = appData.questions[gameState.currentRound][gameState.currentQuestionIndex];
+            const el = document.getElementById(`opt-${selectedOpt}-container`);
+            
+            if (q.answer === selectedOpt) {
+                // Trả lời đúng
+                el.classList.add('ring-4', 'ring-green-500', 'bg-green-900/50');
+                handleCorrect();
+            } else {
+                // Trả lời sai
+                el.classList.add('ring-4', 'ring-red-500', 'bg-red-900/50');
+                handleIncorrect();
+            }
+        }
+
+        function handleCorrect() {
+            if(gameState.isQuestionDone) return;
+            stopTimer();
+            sounds.playWin();
+            
+            // Confetti
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, zIndex: 100 });
+            
+            // Score
+            const pts = parseInt(appData.settings.pointsPerRight);
+            const tIdx = appData.teams.findIndex(t => t.id === gameState.activeTeamId);
+            appData.teams[tIdx].score += pts;
+            appData.teams[tIdx].correct += 1;
+            
+            // Save undo state
+            gameState.lastAction = { type: 'correct', teamId: gameState.activeTeamId, amount: pts };
+            document.getElementById('btn-undo').classList.remove('hidden');
+            
+            saveData();
+            updateScoreboardUI();
+            
+            finalizeQuestion(true);
+        }
+
+        function handleIncorrect() {
+            if(gameState.isQuestionDone) return;
+            stopTimer();
+            sounds.playWrong();
+            
+            const card = document.getElementById('question-card');
+            card.classList.add('shake-effect');
+            setTimeout(() => card.classList.remove('shake-effect'), 500);
+            
+            gameState.teamsPlayedThisQ.push(gameState.activeTeamId);
+            
+            if (gameState.teamsPlayedThisQ.length >= 4) {
+                // All teams failed
+                finalizeQuestion(false);
+            } else {
+                // Prompt to pass
+                openPassModal();
+            }
+        }
+
+        function finalizeQuestion(wasCorrect) {
+            gameState.isQuestionDone = true;
+            saveState();
+            disableControls(true);
+            
+            // Show answer
+            const q = appData.questions[gameState.currentRound][gameState.currentQuestionIndex];
+            const resArea = document.getElementById('q-result-area');
+            const expEl = document.getElementById('q-explanation');
+            resArea.classList.remove('hidden');
+            
+            if (q.type === 'mcq') {
+                document.getElementById('q-correct-answer').textContent = q.answer;
+                expEl.textContent = q.explain;
+                expEl.classList.remove('hidden'); // Hiện giải thích cho trắc nghiệm
+                
+                // Highlight correct option
+                ['A','B','C','D'].forEach(opt => {
+                    const el = document.getElementById(`opt-${opt}-container`);
+                    if(opt === q.answer) {
+                        el.classList.add('ring-4', 'ring-green-500', 'bg-green-900/50');
+                    } else if (!el.classList.contains('ring-red-500')) {
+                        el.classList.add('opacity-50');
+                    }
+                });
+            } else {
+                document.getElementById('q-correct-answer').textContent = "Thử thách đã hoàn thành!";
+                expEl.classList.add('hidden'); // Ẩn gợi ý đối với câu thử thách/mở
+            }
+            
+            if(!wasCorrect) {
+                resArea.classList.replace('bg-green-900/40', 'bg-red-900/40');
+                resArea.classList.replace('border-green-500/50', 'border-red-500/50');
+                document.getElementById('q-correct-answer').parentElement.classList.replace('text-green-400', 'text-red-400');
+            } else {
+                resArea.classList.replace('bg-red-900/40', 'bg-green-900/40');
+                resArea.classList.replace('border-red-500/50', 'border-green-500/50');
+                document.getElementById('q-correct-answer').parentElement.classList.replace('text-red-400', 'text-green-400');
+            }
+        }
+
+        function showAnswerOnly() {
+            stopTimer();
+            finalizeQuestion(false);
+        }
+
+        function completeChallenge() {
+            if(gameState.isQuestionDone) return;
+            stopTimer();
+            sounds.playWin();
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, zIndex: 100 });
+            finalizeQuestion(true);
+        }
+
+        function disableControls(disabled) {
+            const btnComplete = document.getElementById('btn-complete-challenge');
+            const btnPass = document.getElementById('btn-pass');
+            
+            if(btnComplete) {
+                btnComplete.disabled = disabled;
+                btnComplete.style.opacity = disabled ? '0.5' : '1';
+            }
+            if(btnPass) {
+                btnPass.disabled = disabled;
+                btnPass.style.opacity = disabled ? '0.5' : '1';
+            }
+            
+            const btnNext = document.getElementById('btn-next-q');
+            btnNext.disabled = !disabled;
+            btnNext.classList.toggle('opacity-50', !disabled);
+            btnNext.classList.toggle('cursor-not-allowed', !disabled);
+        }
+
+        function openPassModal() {
+            const list = document.getElementById('pass-team-list');
+            list.innerHTML = '';
+            let hasOptions = false;
+            
+            appData.teams.forEach(team => {
+                if (!gameState.teamsPlayedThisQ.includes(team.id) && team.id !== gameState.activeTeamId) {
+                    hasOptions = true;
+                    list.innerHTML += `
+                        <button onclick="passToTeam(${team.id})" class="w-full p-4 rounded-xl flex items-center justify-between border-2 border-transparent hover:border-white transition-all" style="background-color: ${team.color}40">
+                            <span class="text-2xl">${team.icon}</span>
+                            <span class="text-xl font-bold text-white" style="text-shadow: 1px 1px 2px #000;">${team.name}</span>
+                        </button>
+                    `;
+                }
+            });
+            
+            if(!hasOptions) {
+                list.innerHTML = '<p class="text-center text-red-400 py-4">Tất cả các đội đã trả lời hoặc bỏ qua!</p>';
+            }
+            
+            showModal('modal-pass');
+        }
+
+        function passToTeam(teamId) {
+            hideModal('modal-pass');
+            gameState.activeTeamId = teamId;
+            saveState();
+            renderCurrentQuestion();
+            startTimer();
+        }
+
+        function nextQuestion() {
+            document.getElementById('btn-undo').classList.add('hidden'); // Clear undo option
+            gameState.lastAction = null;
+            
+            const totalQ = appData.questions[gameState.currentRound].length;
+            gameState.currentQuestionIndex++;
+            
+            if (gameState.currentQuestionIndex >= totalQ) {
+                // Round Finished
+                if (gameState.currentRound === 1) {
+                    showRound1Summary();
+                } else if (gameState.currentRound === 4) {
+                    endGame();
+                } else {
+                    gameState.currentRound++;
+                    gameState.currentQuestionIndex = 0;
+                    saveState();
+                    prepRoundIntro();
+                    changeView('view-game-intro');
+                }
+            } else {
+                // Next question
+                prepWheel();
+            }
+        }
+
+        function showRound1Summary() {
+            gameState.phase = 'summary';
+            saveState();
+            
+            // Populate dynamic data
+            document.getElementById('sum-year').textContent = `Thành lập năm ${appData.schoolInfo.year}`;
+            document.getElementById('sum-classes').textContent = `${appData.schoolInfo.classes} lớp học`;
+            document.getElementById('sum-girls').textContent = `${appData.schoolInfo.girls} bạn`;
+            document.getElementById('sum-boys').textContent = `${appData.schoolInfo.boys} bạn`;
+            document.getElementById('sum-total').textContent = `${appData.schoolInfo.total} học sinh`;
+            
+            document.getElementById('msg-total').textContent = appData.schoolInfo.total;
+            document.getElementById('msg-class').textContent = appData.schoolInfo.className;
+            
+            changeView('view-round1-summary');
+        }
+
+        function goToNextPhase() {
+            if(gameState.currentRound === 1) {
+                gameState.currentRound = 2;
+                gameState.currentQuestionIndex = 0;
+                saveState();
+                prepRoundIntro();
+                changeView('view-game-intro');
+            }
+        }
+
+        function endGame() {
+            sounds.playWin();
+            confetti({ particleCount: 300, spread: 100, origin: { y: 0.3 }, zIndex: 100 });
+            gameState.phase = 'end';
+            saveState();
+            renderLeaderboard();
+            changeView('view-leaderboard');
+        }
+
+        function renderLeaderboard() {
+            const container = document.getElementById('leaderboard-container');
+            container.innerHTML = '';
+            
+            // Sort teams by score desc
+            const sortedTeams = [...appData.teams].sort((a, b) => b.score - a.score);
+            
+            sortedTeams.forEach((team, index) => {
+                let badge = '';
+                if(index === 0) badge = '<i class="fas fa-crown text-yellow-400 text-3xl"></i>';
+                else if(index === 1) badge = '<i class="fas fa-medal text-gray-300 text-2xl"></i>';
+                else if(index === 2) badge = '<i class="fas fa-medal text-amber-600 text-2xl"></i>';
+                
+                container.innerHTML += `
+                    <div class="glass-panel p-4 md:p-6 rounded-2xl flex items-center justify-between border-l-8" style="border-color: ${team.color}">
+                        <div class="flex items-center">
+                            <div class="w-12 text-center mr-4">${badge}</div>
+                            <div class="text-4xl mr-4 bg-white/10 w-16 h-16 flex items-center justify-center rounded-full border border-white/20 shadow-inner">${team.icon}</div>
+                            <div>
+                                <h3 class="text-2xl font-bold" style="color: ${team.color}">${team.name}</h3>
+                                <p class="text-sm text-gray-300">${team.slogan}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-4xl font-display font-black text-white drop-shadow">${team.score} <span class="text-lg text-gray-400">điểm</span></div>
+                            <div class="text-sm text-green-400 mt-1"><i class="fas fa-check-circle"></i> ${team.correct} câu đúng</div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            if(gameState.phase === 'end') {
+                document.getElementById('end-game-msg').classList.remove('hidden');
+                document.getElementById('lb-title').textContent = "TỔNG KẾT CHUNG CUỘC";
+                document.getElementById('lb-subtitle').textContent = "Chúc mừng nhà vô địch!";
+            } else {
+                document.getElementById('end-game-msg').classList.add('hidden');
+                document.getElementById('lb-title').textContent = "BẢNG XẾP HẠNG";
+                document.getElementById('lb-subtitle').textContent = "Điểm số hiện tại";
+            }
+        }
+
+        function updateScoreboardUI() {
+            const container = document.getElementById('top-scoreboard');
+            if(!container) return;
+            container.innerHTML = '';
+            
+            appData.teams.forEach(team => {
+                const isActive = (gameState.phase === 'question' && team.id === gameState.activeTeamId);
+                const activeClass = isActive ? 'active-team-card' : 'border border-white/10 opacity-80';
+                
+                container.innerHTML += `
+                    <div class="flex flex-col items-center bg-slate-800 p-1 md:p-2 rounded-xl min-w-[60px] md:min-w-[80px] shadow transition-all ${activeClass}">
+                        <div class="text-xl md:text-2xl drop-shadow">${team.icon}</div>
+                        <div class="font-bold text-sm md:text-lg text-white" style="text-shadow: 1px 1px 2px #000;">${team.score}</div>
+                        <div class="w-full h-1 mt-1 rounded-full" style="background-color: ${team.color}"></div>
+                    </div>
+                `;
+            });
+        }
+
+        function undoLastScore() {
+            if(!gameState.lastAction) return;
+            const action = gameState.lastAction;
+            if(action.type === 'correct') {
+                const tIdx = appData.teams.findIndex(t => t.id === action.teamId);
+                appData.teams[tIdx].score -= action.amount;
+                appData.teams[tIdx].correct -= 1;
+                saveData();
+                updateScoreboardUI();
+                gameState.lastAction = null;
+                document.getElementById('btn-undo').classList.add('hidden');
+                // Don't un-finalize question to prevent messy state, just fix points
+                alert("Đã hoàn tác thao tác cộng điểm!");
+            }
+        }
+
+        function openAdjustScoreModal() {
+            const select = document.getElementById('adjust-team-select');
+            select.innerHTML = '';
+            appData.teams.forEach(t => {
+                select.innerHTML += `<option value="${t.id}">${t.name} (${t.score} điểm)</option>`;
+            });
+            document.getElementById('adjust-amount').value = '';
+            document.getElementById('adjust-reason').value = '';
+            showModal('modal-adjust-score');
+        }
+
+        function applyAdjustScore() {
+            const teamId = parseInt(document.getElementById('adjust-team-select').value);
+            const amount = parseInt(document.getElementById('adjust-amount').value);
+            if(isNaN(amount)) return alert("Vui lòng nhập số điểm hợp lệ!");
+            
+            const tIdx = appData.teams.findIndex(t => t.id === teamId);
+            appData.teams[tIdx].score += amount;
+            saveData();
+            updateScoreboardUI();
+            
+            // If in leaderboard, re-render
+            if(document.getElementById('view-leaderboard').classList.contains('active')) {
+                renderLeaderboard();
+            }
+            
+            hideModal('modal-adjust-score');
+        }
+
+        function resetGame(confirmFirst) {
+            if(confirmFirst && !confirm("Bạn có chắc chắn muốn làm mới điểm số và chơi lại từ đầu?")) return;
+            
+            appData.teams.forEach(t => { t.score = 0; t.correct = 0; });
+            saveData();
+            
+            gameState = {
+                currentRound: 1, currentQuestionIndex: 0, activeTeamId: null,
+                teamsPlayedThisQ: [], wheelBag: [], timer: null, timeLeft: 0,
+                phase: 'menu', isQuestionDone: false, lastAction: null
+            };
+            saveState();
+            
+            if(confirmFirst) changeView('view-menu');
+        }
+
+        function checkAdminPassword() {
+            const p = prompt("Nhập mật khẩu Giáo viên:");
+            if(p === "12345") {
+                openAdminPanel();
+            } else if (p !== null) {
+                alert("Mật khẩu không đúng!");
+            }
+        }
+
+        function switchAdminTab(tabId) {
+            document.querySelectorAll('.admin-tab-btn').forEach(b => {
+                b.classList.remove('active-tab', 'bg-blue-600');
+            });
+            event.currentTarget.classList.add('active-tab', 'bg-blue-600');
+            
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        function openAdminPanel() {
+            // Load current config to forms
+            document.getElementById('cfg-school-name').value = appData.schoolInfo.name;
+            document.getElementById('cfg-school-year').value = appData.schoolInfo.year;
+            document.getElementById('cfg-school-classes').value = appData.schoolInfo.classes;
+            document.getElementById('cfg-class-name').value = appData.schoolInfo.className;
+            document.getElementById('cfg-class-girls').value = appData.schoolInfo.girls;
+            document.getElementById('cfg-class-boys').value = appData.schoolInfo.boys;
+            calcTotalStudents();
+            
+            document.getElementById('cfg-timer').value = appData.settings.timer;
+            document.getElementById('cfg-points').value = appData.settings.pointsPerRight;
+            
+            renderAdminTeams();
+            renderAdminQuestions();
+            
+            changeView('view-admin');
+        }
+
+        function calcTotalStudents() {
+            const g = parseInt(document.getElementById('cfg-class-girls').value) || 0;
+            const b = parseInt(document.getElementById('cfg-class-boys').value) || 0;
+            document.getElementById('cfg-class-total').value = g + b;
+        }
+
+        function renderAdminTeams() {
+            const list = document.getElementById('admin-teams-list');
+            list.innerHTML = '';
+            appData.teams.forEach((t, i) => {
+                list.innerHTML += `
+                    <div class="border p-4 rounded bg-gray-50 flex flex-wrap gap-4 items-end">
+                        <div class="w-16"><label class="block text-xs font-bold text-gray-500">Đội</label><input type="text" value="${i+1}" readonly class="w-full p-2 border rounded bg-gray-200"></div>
+                        <div class="flex-grow min-w-[150px]"><label class="block text-xs font-bold text-gray-500">Tên đội</label><input type="text" id="t-name-${i}" value="${t.name}" class="w-full p-2 border rounded"></div>
+                        <div class="w-20"><label class="block text-xs font-bold text-gray-500">Icon</label><input type="text" id="t-icon-${i}" value="${t.icon}" class="w-full p-2 border rounded text-center"></div>
+                        <div class="w-24"><label class="block text-xs font-bold text-gray-500">Màu (Hex)</label><input type="color" id="t-color-${i}" value="${t.color}" class="w-full h-10 border rounded p-1 cursor-pointer"></div>
+                        <div class="w-full"><label class="block text-xs font-bold text-gray-500">Khẩu hiệu</label><input type="text" id="t-slogan-${i}" value="${t.slogan}" class="w-full p-2 border rounded"></div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderAdminQuestions() {
+            const r = document.getElementById('admin-round-select').value;
+            const qList = appData.questions[r];
+            const container = document.getElementById('admin-questions-list');
+            container.innerHTML = '';
+            
+            qList.forEach((q, i) => {
+                const isMCQ = q.type === 'mcq';
+                container.innerHTML += `
+                    <div class="border border-gray-300 p-4 rounded bg-white shadow-sm relative">
+                        <div class="absolute top-2 right-2 space-x-1">
+                            <button onclick="adminDeleteQuestion(${r}, ${i})" class="text-red-500 hover:text-red-700 bg-red-50 p-1 rounded" title="Xóa"><i class="fas fa-trash"></i></button>
+                        </div>
+                        <div class="font-bold text-lg mb-2 text-blue-800 border-b pb-1">Câu ${i+1}</div>
+                        
+                        <div class="mb-3">
+                            <label class="block text-xs font-bold text-gray-600">Loại câu hỏi</label>
+                            <select id="q-type-${r}-${i}" class="p-2 border rounded text-sm w-40" onchange="toggleQTypeUI(${r}, ${i})">
+                                <option value="mcq" ${isMCQ ? 'selected' : ''}>Trắc nghiệm</option>
+                                <option value="challenge" ${!isMCQ ? 'selected' : ''}>Thử thách/Mở</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="block text-xs font-bold text-gray-600">Nội dung câu hỏi</label>
+                            <textarea id="q-text-${r}-${i}" class="w-full p-2 border rounded" rows="2">${q.text}</textarea>
+                        </div>
+                        
+                        <div id="q-mcq-opts-${r}-${i}" class="${isMCQ ? '' : 'hidden'} grid grid-cols-2 gap-2 mb-3 bg-gray-50 p-2 rounded">
+                            <div><label class="text-xs text-gray-500">A</label><input type="text" id="q-optA-${r}-${i}" value="${q.options?.A || ''}" class="w-full p-1.5 border rounded text-sm"></div>
+                            <div><label class="text-xs text-gray-500">B</label><input type="text" id="q-optB-${r}-${i}" value="${q.options?.B || ''}" class="w-full p-1.5 border rounded text-sm"></div>
+                            <div><label class="text-xs text-gray-500">C</label><input type="text" id="q-optC-${r}-${i}" value="${q.options?.C || ''}" class="w-full p-1.5 border rounded text-sm"></div>
+                            <div><label class="text-xs text-gray-500">D</label><input type="text" id="q-optD-${r}-${i}" value="${q.options?.D || ''}" class="w-full p-1.5 border rounded text-sm"></div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div id="q-mcq-ans-${r}-${i}" class="${isMCQ ? '' : 'hidden'}">
+                                <label class="block text-xs font-bold text-green-700">Đáp án đúng (A/B/C/D)</label>
+                                <input type="text" id="q-ans-${r}-${i}" value="${q.answer || ''}" class="w-full p-2 border border-green-300 bg-green-50 rounded font-bold uppercase" maxlength="1">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-xs font-bold text-gray-600">Giải thích / Tiêu chí chấm</label>
+                                <input type="text" id="q-exp-${r}-${i}" value="${q.explain || ''}" class="w-full p-2 border rounded text-sm">
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function toggleQTypeUI(r, i) {
+            const type = document.getElementById(`q-type-${r}-${i}`).value;
+            const optDiv = document.getElementById(`q-mcq-opts-${r}-${i}`);
+            const ansDiv = document.getElementById(`q-mcq-ans-${r}-${i}`);
+            if(type === 'mcq') {
+                optDiv.classList.remove('hidden');
+                ansDiv.classList.remove('hidden');
+            } else {
+                optDiv.classList.add('hidden');
+                ansDiv.classList.add('hidden');
+            }
+        }
+
+        function adminAddQuestion() {
+            const r = document.getElementById('admin-round-select').value;
+            appData.questions[r].push({
+                type: "mcq", text: "Câu hỏi mới", options: { A: "", B: "", C: "", D: "" }, answer: "A", explain: ""
+            });
+            renderAdminQuestions();
+        }
+
+        function adminDeleteQuestion(r, i) {
+            if(confirm("Bạn có chắc muốn xóa câu hỏi này?")) {
+                appData.questions[r].splice(i, 1);
+                renderAdminQuestions();
+            }
+        }
+
+        function saveSettings() {
+            // Save School Info
+            appData.schoolInfo.name = document.getElementById('cfg-school-name').value;
+            appData.schoolInfo.year = parseInt(document.getElementById('cfg-school-year').value);
+            appData.schoolInfo.classes = parseInt(document.getElementById('cfg-school-classes').value);
+            appData.schoolInfo.className = document.getElementById('cfg-class-name').value;
+            appData.schoolInfo.girls = parseInt(document.getElementById('cfg-class-girls').value);
+            appData.schoolInfo.boys = parseInt(document.getElementById('cfg-class-boys').value);
+            appData.schoolInfo.total = appData.schoolInfo.girls + appData.schoolInfo.boys;
+            
+            // Save Settings
+            appData.settings.timer = parseInt(document.getElementById('cfg-timer').value) || 30;
+            appData.settings.pointsPerRight = parseInt(document.getElementById('cfg-points').value) || 10;
+            
+            // Save Teams
+            for(let i=0; i<4; i++) {
+                appData.teams[i].name = document.getElementById(`t-name-${i}`).value;
+                appData.teams[i].icon = document.getElementById(`t-icon-${i}`).value;
+                appData.teams[i].color = document.getElementById(`t-color-${i}`).value;
+                appData.teams[i].slogan = document.getElementById(`t-slogan-${i}`).value;
+            }
+            
+            // Save Questions
+            const r = document.getElementById('admin-round-select').value;
+            const qList = appData.questions[r];
+            for(let i=0; i<qList.length; i++) {
+                const type = document.getElementById(`q-type-${r}-${i}`).value;
+                qList[i].type = type;
+                qList[i].text = document.getElementById(`q-text-${r}-${i}`).value;
+                qList[i].explain = document.getElementById(`q-exp-${r}-${i}`).value;
+                
+                if(type === 'mcq') {
+                    qList[i].options = {
+                        A: document.getElementById(`q-optA-${r}-${i}`).value,
+                        B: document.getElementById(`q-optB-${r}-${i}`).value,
+                        C: document.getElementById(`q-optC-${r}-${i}`).value,
+                        D: document.getElementById(`q-optD-${r}-${i}`).value
+                    };
+                    qList[i].answer = document.getElementById(`q-ans-${r}-${i}`).value.toUpperCase();
+                }
+            }
+            
+            saveData();
+            updateStaticUI();
+            alert("Đã lưu cấu hình thành công!");
+        }
+
+        function resetToDefaults() {
+            if(confirm("CẢNH BÁO: Thao tác này sẽ XÓA TOÀN BỘ dữ liệu bạn đã chỉnh sửa và khôi phục về trạng thái gốc. Bạn có chắc chắn?")) {
+                localStorage.removeItem('game10a3_data');
+                localStorage.removeItem('game10a3_state');
+                location.reload();
+            }
+        }
+
+        function exportJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
+            const dlAnchorElem = document.createElement('a');
+            dlAnchorElem.setAttribute("href", dataStr);
+            dlAnchorElem.setAttribute("download", "cau_hoi_10A3.json");
+            dlAnchorElem.click();
+        }
+
+        function exportScores() {
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Tên Đội,Điểm số,Số câu đúng\n";
+            appData.teams.forEach(t => {
+                csvContent += `${t.name},${t.score},${t.correct}\n`;
+            });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "ket_qua_10A3.csv");
+            document.body.appendChild(link); 
+            link.click();
+        }
+
+        // Initialize on load
+        window.onload = () => {
+            initApp();
+            // Handle active tab highlighting for menu
+            document.getElementById('view-leaderboard').addEventListener('mouseover', () => {
+                if(gameState.phase === 'menu') renderLeaderboard();
+            });
+        };
+
+    </script>
+</body>
+</html>
